@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { useState, type ComponentType } from "react";
+import { Building2, Loader2, Mail, Pencil, Sparkles, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -119,71 +119,187 @@ export function ActiveIcpPane({
   };
 
   return (
-    <div className="max-w-5xl">
-      <header className="flex items-start justify-between gap-4 mb-2">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold truncate">{icp.name}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {companies.length} companies · {people.length} people · {emails.length} emails
-          </p>
+    <div className="mx-auto w-full max-w-6xl px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
+      <header className="surface-elevated rounded-2xl p-6 sm:p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary backdrop-blur">
+              <Sparkles className="size-3.5" strokeWidth={2.5} />
+              Active ICP
+            </div>
+            <h2 className="gradient-text truncate text-4xl font-bold tracking-tight sm:text-5xl">
+              {icp.name}
+            </h2>
+            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+              Build a prospect list, rank contacts, and draft outreach from one focused segment.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Pencil className="size-3.5" />
+              <span>Edit</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={onDelete}>
+              <Trash2 className="size-3.5" />
+              <span>Delete</span>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="ml-1">Edit</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
-            <span className="ml-1">Delete</span>
-          </Button>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          <Metric icon={Building2} label="Companies" value={companies.length} />
+          <Metric icon={Users} label="People" value={people.length} />
+          <Metric icon={Mail} label="Emails" value={emails.length} />
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {icp.industries.map((x) => (
-          <Badge key={`ind-${x}`} variant="secondary">{x}</Badge>
-        ))}
-        {(icp.minEmployees != null || icp.maxEmployees != null) && (
-          <Badge variant="secondary">
-            {icp.minEmployees ?? "?"}–{icp.maxEmployees ?? "?"} employees
-          </Badge>
-        )}
-        {icp.geos.map((x) => (
-          <Badge key={`geo-${x}`} variant="secondary">{x}</Badge>
-        ))}
-        {icp.targetTitles.map((x) => (
-          <Badge key={`title-${x}`} variant="outline">{x}</Badge>
-        ))}
-      </div>
+      <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_340px]">
+        <div className="surface rounded-2xl p-5 sm:p-6">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Targeting
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {icp.industries.map((x) => (
+              <Badge key={`ind-${x}`} variant="secondary">{x}</Badge>
+            ))}
+            {(icp.minEmployees != null || icp.maxEmployees != null) && (
+              <Badge variant="secondary">
+                {icp.minEmployees ?? "?"}-{icp.maxEmployees ?? "?"} employees
+              </Badge>
+            )}
+            {icp.geos.map((x) => (
+              <Badge key={`geo-${x}`} variant="secondary">{x}</Badge>
+            ))}
+            {icp.targetTitles.map((x) => (
+              <Badge key={`title-${x}`} variant="outline">{x}</Badge>
+            ))}
+          </div>
 
-      {(icp.buyerPersona || icp.extraContext) && (
-        <div className="text-sm text-muted-foreground space-y-2 mb-4">
-          {icp.buyerPersona && <p><span className="font-medium text-foreground">Persona:</span> {icp.buyerPersona}</p>}
-          {icp.extraContext && <p><span className="font-medium text-foreground">Context:</span> {icp.extraContext}</p>}
+          {(icp.buyerPersona || icp.extraContext) && (
+            <div className="mt-5 space-y-3 border-t border-border/50 pt-4 text-sm leading-relaxed text-muted-foreground">
+              {icp.buyerPersona && (
+                <p>
+                  <span className="font-semibold text-foreground">Persona · </span>
+                  {icp.buyerPersona}
+                </p>
+              )}
+              {icp.extraContext && (
+                <p>
+                  <span className="font-semibold text-foreground">Context · </span>
+                  {icp.extraContext}
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="flex items-center gap-2 mb-2">
-        <Button onClick={handleDiscoverCompanies} disabled={discovering || running}>
-          {discovering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          <span className="ml-1">Find Companies</span>
-        </Button>
-        <Button variant="outline" onClick={handleRunPipeline} disabled={running || discovering}>
-          {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          <span className="ml-1">Run Full Pipeline</span>
-        </Button>
-        {progress && (
-          <span className="text-xs text-muted-foreground truncate">{progress}</span>
+        <div className="surface-elevated rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Actions
+            </div>
+            {(discovering || running) && (
+              <Loader2 className="size-3.5 animate-spin text-primary" />
+            )}
+          </div>
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            Run discovery in steps or launch the full prospecting pass.
+          </p>
+          <div className="mt-5 grid gap-2.5">
+            <button
+              onClick={handleDiscoverCompanies}
+              disabled={discovering || running}
+              className="btn-glow inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {discovering ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" strokeWidth={2.4} />
+              )}
+              <span>Find Companies</span>
+            </button>
+            <button
+              onClick={handleRunPipeline}
+              disabled={running || discovering}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border/70 bg-background/40 px-4 text-[13.5px] font-semibold text-foreground backdrop-blur transition-colors hover:bg-background/70 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {running ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" strokeWidth={2.2} />
+              )}
+              <span>Run Full Pipeline</span>
+            </button>
+          </div>
+          {progress && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/8 px-3 py-2 text-xs text-foreground/85">
+              <span className="relative flex size-1.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+              </span>
+              <span className="truncate">{progress}</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="mt-8">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Pipeline
+            </div>
+            <h3 className="mt-1 text-xl font-semibold tracking-tight">
+              Prospect pipeline
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              Companies, contacts, and draft status for this ICP.
+            </p>
+          </div>
+        </div>
+        <Separator className="mb-4 bg-border/50" />
+
+        {loading ? (
+          <div className="surface flex items-center gap-2 rounded-xl p-5 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading pipeline
+          </div>
+        ) : (
+          <CompaniesSection detail={detail} onRefresh={onRefresh} />
         )}
       </div>
+    </div>
+  );
+}
 
-      <Separator className="my-4" />
-
-      {loading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : (
-        <CompaniesSection detail={detail} onRefresh={onRefresh} />
-      )}
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="surface group relative overflow-hidden rounded-xl p-4 transition-all hover:border-primary/30">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-primary/10 opacity-60 blur-2xl transition-opacity group-hover:opacity-100"
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="gradient-text-accent text-[40px] font-bold leading-none tabular-nums tracking-tight">
+            {value}
+          </div>
+          <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {label}
+          </div>
+        </div>
+        <div className="icon-glow flex size-10 shrink-0 items-center justify-center rounded-xl text-primary">
+          <Icon className="size-4" strokeWidth={2.2} />
+        </div>
+      </div>
     </div>
   );
 }

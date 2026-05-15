@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Icp, IcpDetail } from "@/lib/types";
 import { IcpSidebar } from "./icp-sidebar";
 import { IcpFormDialog } from "./icp-form-dialog";
 import { ActiveIcpPane } from "./active-icp-pane";
+import { ShaderBackground } from "@/components/ui/shader-background";
 
 export function Dashboard() {
   const [icps, setIcps] = useState<Icp[]>([]);
@@ -51,11 +53,14 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    fetchIcps();
+    const id = window.setTimeout(() => void fetchIcps(), 0);
+    return () => window.clearTimeout(id);
   }, [fetchIcps]);
 
   useEffect(() => {
-    if (activeId) fetchDetail(activeId);
+    if (!activeId) return;
+    const id = window.setTimeout(() => void fetchDetail(activeId), 0);
+    return () => window.clearTimeout(id);
   }, [activeId, fetchDetail]);
 
   const handleSaved = async (saved: Icp) => {
@@ -79,31 +84,42 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0">
-      <IcpSidebar
-        icps={icps}
-        activeId={activeId}
-        loading={loadingList}
-        onSelect={setActiveId}
-        onCreate={() => setCreateOpen(true)}
-      />
-      <main className="flex-1 min-w-0 overflow-y-auto p-6">
-        {detail ? (
-          <ActiveIcpPane
-            detail={detail}
-            loading={loadingDetail}
-            onEdit={() => setEditTarget(detail.icp)}
-            onDelete={() => handleDelete(detail.icp.id)}
-            onRefresh={() => fetchDetail(detail.icp.id)}
-          />
-        ) : loadingList ? (
-          <div className="text-muted-foreground">Loading…</div>
-        ) : (
-          <div className="text-muted-foreground text-sm">
-            No ICP selected. Create one in the sidebar to get started.
-          </div>
-        )}
-      </main>
+    <div className="relative flex min-h-dvh flex-1 p-4 text-foreground sm:p-6 lg:p-8">
+      <ShaderBackground />
+      <div className="glass-surface shine-border mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-[1500px] flex-col overflow-hidden rounded-3xl md:min-h-[calc(100dvh-3rem)] md:flex-row lg:min-h-[calc(100dvh-4rem)]">
+        <IcpSidebar
+          icps={icps}
+          activeId={activeId}
+          loading={loadingList}
+          onSelect={setActiveId}
+          onCreate={() => setCreateOpen(true)}
+        />
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          {detail ? (
+            <ActiveIcpPane
+              detail={detail}
+              loading={loadingDetail}
+              onEdit={() => setEditTarget(detail.icp)}
+              onDelete={() => handleDelete(detail.icp.id)}
+              onRefresh={() => fetchDetail(detail.icp.id)}
+            />
+          ) : loadingList ? (
+            <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading workspace
+            </div>
+          ) : (
+            <div className="flex min-h-[420px] items-center justify-center p-8">
+              <div className="max-w-sm rounded-lg border bg-card/80 p-5 text-center shadow-sm">
+                <h2 className="text-base font-semibold">No ICP selected</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create one in the sidebar to start discovering companies and contacts.
+                </p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       <IcpFormDialog
         open={createOpen || editTarget !== null}
