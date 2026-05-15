@@ -213,16 +213,32 @@ export function CompaniesSection({
                                 )}
                               </div>
                               {email ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEmailDrawerPerson(person)}
-                                >
-                                  <Mail className="h-3.5 w-3.5" />
-                                  <span className="ml-1">
-                                    {email.status === "sent" ? "Sent" : "View draft"}
-                                  </span>
-                                </Button>
+                                <div className="flex items-center gap-1.5">
+                                  {email.judgeResult && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${
+                                        (email.judgeResult as { overall: { score: number } }).overall.score >= 8
+                                          ? "border-green-500/50 text-green-600 dark:text-green-400"
+                                          : (email.judgeResult as { overall: { score: number } }).overall.score >= 6
+                                            ? "border-yellow-500/50 text-yellow-600 dark:text-yellow-400"
+                                            : "border-red-500/50 text-red-600 dark:text-red-400"
+                                      }`}
+                                    >
+                                      {(email.judgeResult as { overall: { score: number } }).overall.score}/10
+                                    </Badge>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEmailDrawerPerson(person)}
+                                  >
+                                    <Mail className="h-3.5 w-3.5" />
+                                    <span className="ml-1">
+                                      {email.status === "sent" ? "Sent" : "View draft"}
+                                    </span>
+                                  </Button>
+                                </div>
                               ) : (
                                 <Button
                                   size="sm"
