@@ -1,0 +1,80 @@
+import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { companies, icps, people } from "@/lib/db/schema";
+import { fetchCompanyEmployees } from "@/lib/apify";
+import { filterByTitles, rankPeople } from "@/lib/agents/people-ranking";
+import { findCompanyLinkedinUrl } from "@/lib/agents/find-linkedin";
+import { createSseStream } from "@/lib/sse";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+export async function POST(
+  _req: NextRequest,
+  ctx: RouteContext<"/api/companies/[id]/discover-people">,
+) {
+  const { id } = await ctx.params;
+  const [company] = await db.select().from(companies).where(eq(companies.id, id));
+  if (!company) return Response.json({ error: "not found" }, { status: 404 });
+
+  const [icp] = await db.select().from(icps).where(eq(icps.id, company.icpId));
+  if (!icp) return Response.json({ error: "parent ICP missing" }, { status: 500 });
+
+  return createSseStream(async (send) => {
+    let linkedinUrl = company.linkedinUrl;
+    if (!linkedinUrl) {
+      send("progress", { message: "Looking up LinkedIn URL…" });
+      linkedinUrl = await findCompanyLinkedinUrl(company.name, company.domain);
+      if (linkedinUrl) {
+        await db
+          .update(companies)
+          .set({ linkedinUrl })
+          .where(eq(companies.id, company.id));
+      } else {
+        throw new Error(
+          `Could not find a LinkedIn URL for ${company.name}. Add it manually and retry.`,
+        );
+      }
+    }
+
+    send("progress", { message: "Fetching employees from Apify…" });
+    const employees = await fetchCompanyEmployees(linkedinUrl, 50);
+    send("progress", { message: `Got ${employees.length} employees, filtering…` });
+
+    const filtered = filterByTitles(employees, icp.targetTitles);
+    const candidates = filtered.length > 0 ? filtered : employees.slice(0, 30);
+
+    send("progress", { message: `Ranking ${candidates.length} candidates…` });
+    const ranked = await rankPeople(icp, company.name, candidates);
+    if (ranked.length === 0) {
+      send("done", { personIds: [], count: 0 });
+      return;
+    }
+
+    // Replace prior people for this company to keep things clean on re-run
+    await db.delete(people).where(eq(people.companyId, company.id));
+
+    const inserted = await db
+      .insert(people)
+      .values(
+        ranked.map((p) => ({
+          companyId: company.id,
+          fullName: p.fullName,
+          title: p.title ?? null,
+          linkedinUrl: p.linkedinUrl ?? null,
+          location: p.location ?? null,
+          score: p.score,
+          scoreReason: p.scoreReason,
+        })),
+      )
+      .returning({ id: people.id });
+
+    await db
+      .update(companies)
+      .set({ status: "enriched" })
+      .where(eq(companies.id, company.id));
+
+    send("done", { personIds: inserted.map((r) => r.id), count: inserted.length });
+  });
+}
