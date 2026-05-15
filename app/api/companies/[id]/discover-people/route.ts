@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { companies, icps, people } from "@/lib/db/schema";
-import { fetchCompanyEmployees } from "@/lib/apify";
+import { enrichDiscoveredPeople } from "@/lib/apollo";
+import { discoverPeopleAtCompany } from "@/lib/agents/people-discovery";
 import { filterByTitles, rankPeople } from "@/lib/agents/people-ranking";
-import { findCompanyLinkedinUrl } from "@/lib/agents/find-linkedin";
 import { createSseStream } from "@/lib/sse";
 
 export const runtime = "nodejs";
@@ -22,25 +22,14 @@ export async function POST(
   if (!icp) return Response.json({ error: "parent ICP missing" }, { status: 500 });
 
   return createSseStream(async (send) => {
-    let linkedinUrl = company.linkedinUrl;
-    if (!linkedinUrl) {
-      send("progress", { message: "Looking up LinkedIn URL…" });
-      linkedinUrl = await findCompanyLinkedinUrl(company.name, company.domain);
-      if (linkedinUrl) {
-        await db
-          .update(companies)
-          .set({ linkedinUrl })
-          .where(eq(companies.id, company.id));
-      } else {
-        throw new Error(
-          `Could not find a LinkedIn URL for ${company.name}. Add it manually and retry.`,
-        );
-      }
-    }
-
-    send("progress", { message: "Fetching employees from Apify…" });
-    const employees = await fetchCompanyEmployees(linkedinUrl, 50);
-    send("progress", { message: `Got ${employees.length} employees, filtering…` });
+    send("progress", { message: "Discovering people with Claude web search…" });
+    const discovered = await discoverPeopleAtCompany(icp, company, send);
+    send("progress", { message: `Found ${discovered.length} people, enriching with Apollo…` });
+    const employees = await enrichDiscoveredPeople(discovered, {
+      companyName: company.name,
+      companyDomain: company.domain,
+    });
+    send("progress", { message: `Enriched ${employees.length} people, filtering…` });
 
     const filtered = filterByTitles(employees, icp.targetTitles);
     const candidates = filtered.length > 0 ? filtered : employees.slice(0, 30);

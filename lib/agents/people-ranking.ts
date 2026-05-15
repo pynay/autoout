@@ -1,6 +1,6 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
 import type { Icp } from "@/lib/db/schema";
-import type { LinkedinEmployee } from "@/lib/apify";
+import type { LinkedinEmployee } from "@/lib/apollo";
 import type { RankedPerson } from "@/lib/types";
 
 const MAX_RANKED = 5;
