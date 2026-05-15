@@ -89,6 +89,8 @@ export const emails = pgTable(
     toAddress: text("to_address"),
     subject: text("subject").notNull(),
     body: text("body").notNull(),
+    originalSubject: text("original_subject"),
+    originalBody: text("original_body"),
     status: emailStatus("status").notNull().default("draft"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     resendId: text("resend_id"),
@@ -100,6 +102,22 @@ export const emails = pgTable(
   (t) => [index("emails_person_idx").on(t.personId)],
 );
 
+export const styleLessons = pgTable(
+  "style_lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    icpId: uuid("icp_id")
+      .notNull()
+      .references(() => icps.id, { onDelete: "cascade" }),
+    emailId: uuid("email_id")
+      .notNull()
+      .references(() => emails.id, { onDelete: "cascade" }),
+    lesson: text("lesson").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("style_lessons_icp_idx").on(t.icpId)],
+);
+
 export type Icp = typeof icps.$inferSelect;
 export type NewIcp = typeof icps.$inferInsert;
 export type Company = typeof companies.$inferSelect;
@@ -108,3 +126,5 @@ export type Person = typeof people.$inferSelect;
 export type NewPerson = typeof people.$inferInsert;
 export type Email = typeof emails.$inferSelect;
 export type NewEmail = typeof emails.$inferInsert;
+export type StyleLesson = typeof styleLessons.$inferSelect;
+export type NewStyleLesson = typeof styleLessons.$inferInsert;

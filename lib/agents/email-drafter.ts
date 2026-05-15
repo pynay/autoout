@@ -1,4 +1,7 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
+import { eq, desc } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { styleLessons } from "@/lib/db/schema";
 import type { Icp, Company, Person } from "@/lib/db/schema";
 import type { EmailDraft, EmailJudgment } from "@/lib/types";
 
@@ -64,11 +67,31 @@ function formatJudgmentFeedback(j: EmailJudgment): string {
   return lines.join("\n");
 }
 
-async function callDrafter(messages: { role: "user" | "assistant"; content: string }[]): Promise<EmailDraft> {
+/** Fetch the most recent style lessons for an ICP (max 20 to keep prompt concise). */
+async function fetchLessons(icpId: string): Promise<string[]> {
+  const rows = await db
+    .select({ lesson: styleLessons.lesson })
+    .from(styleLessons)
+    .where(eq(styleLessons.icpId, icpId))
+    .orderBy(desc(styleLessons.createdAt))
+    .limit(20);
+  return rows.map((r) => r.lesson);
+}
+
+function buildSystemPrompt(lessons: string[]): string {
+  if (lessons.length === 0) return SYSTEM_PROMPT;
+  const lessonsBlock = lessons.map((l, i) => `${i + 1}. ${l}`).join("\n");
+  return `${SYSTEM_PROMPT}
+
+STYLE PREFERENCES (learned from the user's previous edits — follow these closely):
+${lessonsBlock}`;
+}
+
+async function callDrafter(messages: { role: "user" | "assistant"; content: string }[], lessons: string[] = []): Promise<EmailDraft> {
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(lessons),
     tools: [submitTool as never],
     tool_choice: { type: "tool", name: "submit_draft" } as never,
     messages,
@@ -93,8 +116,9 @@ export async function draftEmail(
   company: Company,
   person: Person,
 ): Promise<EmailDraft> {
+  const lessons = await fetchLessons(icp.id);
   const userMessage = `Write a cold email.\n\n${recipientContext(icp, company, person)}\n\nSubmit the draft.`;
-  return callDrafter([{ role: "user", content: userMessage }]);
+  return callDrafter([{ role: "user", content: userMessage }], lessons);
 }
 
 /** Revise an existing draft using judge feedback. */
@@ -106,6 +130,8 @@ export async function reviseDraft(
   judgment: EmailJudgment,
 ): Promise<EmailDraft> {
   const ctx = recipientContext(icp, company, person);
+
+  const lessons = await fetchLessons(icp.id);
 
   // Build a multi-turn conversation so the model has full context
   const messages: { role: "user" | "assistant"; content: string }[] = [
@@ -120,5 +146,5 @@ export async function reviseDraft(
     },
   ];
 
-  return callDrafter(messages);
+  return callDrafter(messages, lessons);
 }

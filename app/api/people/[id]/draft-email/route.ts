@@ -43,6 +43,8 @@ export async function POST(
       toAddress: person.emailAddress,
       subject: draft.subject,
       body: draft.body,
+      originalSubject: draft.subject,
+      originalBody: draft.body,
       status: "draft",
       judgeResult: judgment,
     })

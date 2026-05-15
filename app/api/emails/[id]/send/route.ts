@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { emails } from "@/lib/db/schema";
+import { emails, people, companies, styleLessons } from "@/lib/db/schema";
 import { resend, EMAIL_FROM } from "@/lib/resend";
+import { extractLessons } from "@/lib/agents/email-learner";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,18 @@ export async function POST(
       })
       .where(eq(emails.id, id))
       .returning();
+
+    // Learn from user edits (fire-and-forget — don't block the send response)
+    if (
+      email.originalSubject &&
+      email.originalBody &&
+      (email.subject !== email.originalSubject || email.body !== email.originalBody)
+    ) {
+      learnFromEdits(email.id, email.personId, email.originalSubject, email.originalBody, email.subject, email.body).catch(
+        (err) => console.error("[email-learner] failed:", err),
+      );
+    }
+
     return Response.json(row);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -50,4 +63,30 @@ export async function POST(
       .where(eq(emails.id, id));
     return Response.json({ error: message }, { status: 500 });
   }
+}
+
+async function learnFromEdits(
+  emailId: string,
+  personId: string,
+  originalSubject: string,
+  originalBody: string,
+  editedSubject: string,
+  editedBody: string,
+) {
+  // Look up the ICP for this email's person → company → icp chain
+  const [person] = await db.select().from(people).where(eq(people.id, personId));
+  if (!person) return;
+  const [company] = await db.select().from(companies).where(eq(companies.id, person.companyId));
+  if (!company) return;
+
+  const lessons = await extractLessons(originalSubject, originalBody, editedSubject, editedBody);
+  if (lessons.length === 0) return;
+
+  await db.insert(styleLessons).values(
+    lessons.map((lesson) => ({
+      icpId: company.icpId,
+      emailId,
+      lesson,
+    })),
+  );
 }
