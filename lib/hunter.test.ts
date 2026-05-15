@@ -1,6 +1,6 @@
 import { afterEach, describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import { enrichDiscoveredPeople } from "./hunter";
+import { enrichDiscoveredPeople, findEnrichedEmailAddress } from "./hunter";
 
 const originalApiKey = process.env.HUNTER_API_KEY;
 const originalFetch = globalThis.fetch;
@@ -111,5 +111,28 @@ describe("enrichDiscoveredPeople", () => {
         emailConfidence: null,
       },
     ]);
+  });
+
+  it("finds enriched email by unique name when ranked person omits LinkedIn URL", () => {
+    const email = findEnrichedEmailAddress(
+      [
+        {
+          fullName: "Ada Lovelace",
+          title: "Engineering leader",
+          linkedinUrl: "https://www.linkedin.com/in/ada-lovelace",
+          location: null,
+          emailAddress: "ada@analytical.example",
+          emailConfidence: 96,
+        },
+      ],
+      {
+        fullName: "Ada Lovelace",
+        title: "Engineering leader",
+        linkedinUrl: null,
+        location: null,
+      },
+    );
+
+    assert.equal(email, "ada@analytical.example");
   });
 });

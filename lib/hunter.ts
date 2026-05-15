@@ -115,3 +115,22 @@ export async function enrichDiscoveredPeople(
 
   return enriched;
 }
+
+export function findEnrichedEmailAddress(
+  enrichedPeople: EnrichedPerson[],
+  person: DiscoveredPerson,
+): string | null {
+  const fullName = person.fullName.trim().toLowerCase();
+  const linkedInKey = `${fullName}|${person.linkedinUrl ?? ""}`;
+  const exact = enrichedPeople.find(
+    (enriched) =>
+      enriched.emailAddress &&
+      `${enriched.fullName.trim().toLowerCase()}|${enriched.linkedinUrl ?? ""}` === linkedInKey,
+  );
+  if (exact?.emailAddress) return exact.emailAddress;
+
+  const nameMatches = enrichedPeople.filter(
+    (enriched) => enriched.emailAddress && enriched.fullName.trim().toLowerCase() === fullName,
+  );
+  return nameMatches.length === 1 ? nameMatches[0].emailAddress : null;
+}
