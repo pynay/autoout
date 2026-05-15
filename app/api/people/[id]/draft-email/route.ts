@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { people, companies, icps, emails } from "@/lib/db/schema";
 import { draftEmail } from "@/lib/agents/email-drafter";
+import { judgeEmail } from "@/lib/agents/email-judge";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,6 +23,7 @@ export async function POST(
   if (!icp) return Response.json({ error: "icp missing" }, { status: 500 });
 
   const draft = await draftEmail(icp, company, person);
+  const judgment = await judgeEmail(draft.subject, draft.body, person, company);
 
   const [row] = await db
     .insert(emails)
@@ -30,6 +32,7 @@ export async function POST(
       subject: draft.subject,
       body: draft.body,
       status: "draft",
+      judgeResult: judgment,
     })
     .returning();
 

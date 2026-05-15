@@ -34,3 +34,17 @@ export type EmailDraft = {
   subject: string;
   body: string;
 };
+
+export type JudgeDimension = {
+  score: number; // 0–10
+  feedback: string;
+};
+
+export type EmailJudgment = {
+  personalization: JudgeDimension;
+  clarity: JudgeDimension;
+  cta: JudgeDimension;
+  tone: JudgeDimension;
+  wordCount: number;
+  overall: JudgeDimension;
+};

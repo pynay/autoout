@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { EmailJudgment } from "@/lib/types";
 import {
   pgTable,
   uuid,
@@ -7,6 +8,7 @@ import {
   timestamp,
   pgEnum,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const companyStatus = pgEnum("company_status", [
@@ -90,6 +92,7 @@ export const emails = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
     resendId: text("resend_id"),
     errorMessage: text("error_message"),
+    judgeResult: jsonb("judge_result").$type<EmailJudgment>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
