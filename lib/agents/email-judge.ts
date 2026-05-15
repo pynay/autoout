@@ -14,7 +14,7 @@ Score each dimension 0–10:
 
 4. **Tone** — Does it read like a real human wrote it? Deductions for: corporate buzzwords, sycophancy, exclamation marks, "I hope this finds you well", anything that pattern-matches to spam.
 
-5. **Word count** — Count the body words. 80–120 is a 10. Each 10 words outside that range loses 2 points. Below 50 or above 160 is a 0.
+5. **Word count** — Count the body words. 60–100 is a 10. Each 10 words outside that range loses 2 points. Below 40 or above 140 is a 0.
 
 For each dimension, provide a score and one sentence of specific feedback explaining the score.
 
