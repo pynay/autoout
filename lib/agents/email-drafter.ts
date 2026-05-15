@@ -1,6 +1,6 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
 import type { Icp, Company, Person } from "@/lib/db/schema";
-import type { EmailDraft } from "@/lib/types";
+import type { EmailDraft, EmailJudgment } from "@/lib/types";
 
 const SYSTEM_PROMPT = `You write cold outbound emails that don't read like cold outbound emails.
 
@@ -33,14 +33,9 @@ const submitTool = {
   },
 };
 
-export async function draftEmail(
-  icp: Icp,
-  company: Company,
-  person: Person,
-): Promise<EmailDraft> {
-  const userMessage = `Write a cold email.
-
-RECIPIENT
+/** Build the context block shared by initial drafts and revisions. */
+function recipientContext(icp: Icp, company: Company, person: Person): string {
+  return `RECIPIENT
 - Name: ${person.fullName}
 - Title: ${person.title ?? "(unknown)"}
 - Company: ${company.name}${company.domain ? ` (${company.domain})` : ""}
@@ -53,17 +48,30 @@ ICP / BUYER PERSONA
 ${icp.buyerPersona || "(none specified)"}
 
 EXTRA CONTEXT ABOUT THE SENDER / OFFER
-${icp.extraContext || "(none specified)"}
+${icp.extraContext || "(none specified)"}`;
+}
 
-Submit the draft.`;
+/** Format a judgment into human-readable feedback for the revision prompt. */
+function formatJudgmentFeedback(j: EmailJudgment): string {
+  const lines = [
+    `Overall: ${j.overall.score}/10 — ${j.overall.feedback}`,
+    `Personalization: ${j.personalization.score}/10 — ${j.personalization.feedback}`,
+    `Clarity: ${j.clarity.score}/10 — ${j.clarity.feedback}`,
+    `CTA: ${j.cta.score}/10 — ${j.cta.feedback}`,
+    `Tone: ${j.tone.score}/10 — ${j.tone.feedback}`,
+    `Word count: ${j.wordCount} words`,
+  ];
+  return lines.join("\n");
+}
 
+async function callDrafter(messages: { role: "user" | "assistant"; content: string }[]): Promise<EmailDraft> {
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     tools: [submitTool as never],
     tool_choice: { type: "tool", name: "submit_draft" } as never,
-    messages: [{ role: "user", content: userMessage }],
+    messages,
   });
 
   const submitBlock = response.content.find(
@@ -77,4 +85,40 @@ Submit the draft.`;
     throw new Error("Draft payload was malformed.");
   }
   return { subject: input.subject.trim(), body: input.body.trim() };
+}
+
+/** Create the first draft (no prior feedback). */
+export async function draftEmail(
+  icp: Icp,
+  company: Company,
+  person: Person,
+): Promise<EmailDraft> {
+  const userMessage = `Write a cold email.\n\n${recipientContext(icp, company, person)}\n\nSubmit the draft.`;
+  return callDrafter([{ role: "user", content: userMessage }]);
+}
+
+/** Revise an existing draft using judge feedback. */
+export async function reviseDraft(
+  icp: Icp,
+  company: Company,
+  person: Person,
+  previousDraft: EmailDraft,
+  judgment: EmailJudgment,
+): Promise<EmailDraft> {
+  const ctx = recipientContext(icp, company, person);
+
+  // Build a multi-turn conversation so the model has full context
+  const messages: { role: "user" | "assistant"; content: string }[] = [
+    { role: "user", content: `Write a cold email.\n\n${ctx}\n\nSubmit the draft.` },
+    {
+      role: "assistant",
+      content: `Here was my previous draft:\n\nSubject: ${previousDraft.subject}\n\n${previousDraft.body}`,
+    },
+    {
+      role: "user",
+      content: `A quality judge scored your draft and found issues. Fix every piece of feedback below and submit an improved draft.\n\nJUDGE FEEDBACK:\n${formatJudgmentFeedback(judgment)}\n\nRevise the email to address ALL feedback. Submit the improved draft.`,
+    },
+  ];
+
+  return callDrafter(messages);
 }
