@@ -6,8 +6,10 @@ import {
   ChevronRight,
   ExternalLink,
   Loader2,
-  Users,
   Mail,
+  MapPin,
+  Signal,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -92,43 +94,53 @@ export function CompaniesSection({
 
   if (companies.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
-        No companies yet. Click <span className="font-medium">Find Companies</span> above to discover prospects matching this ICP.
+      <div className="surface rounded-2xl border-dashed p-10 text-center">
+        <div className="icon-glow mx-auto flex size-12 items-center justify-center rounded-xl text-primary">
+          <Signal className="size-5" strokeWidth={2.2} />
+        </div>
+        <h3 className="mt-4 text-base font-semibold">No companies yet</h3>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+          Use Find Companies to discover prospects matching this ICP.
+        </p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {companies.map((company) => {
           const isExpanded = expanded.has(company.id);
           const persons = peopleByCompany.get(company.id) ?? [];
           return (
-            <div key={company.id} className="border rounded-md">
-              <div className="flex items-center gap-2 p-3">
+            <div
+              key={company.id}
+              className="surface overflow-hidden rounded-xl transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_32px_oklch(0_0_0/0.35)]"
+            >
+              <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                 <button
                   onClick={() => toggle(company.id)}
-                  className="p-0.5 hover:bg-accent rounded"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background/70 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  aria-label={isExpanded ? "Collapse company" : "Expand company"}
                 >
                   {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="size-4" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="size-4" />
                   )}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{company.name}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-sm font-semibold">{company.name}</span>
                     {company.domain && (
                       <a
                         href={`https://${company.domain}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
+                        className="inline-flex items-center gap-1 rounded-full border bg-background/60 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {company.domain}
-                        <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="size-3" />
                       </a>
                     )}
                     {company.employeeRange && (
@@ -137,39 +149,49 @@ export function CompaniesSection({
                       </Badge>
                     )}
                     {company.geo && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <MapPin className="size-3" />
                         {company.geo}
                       </Badge>
                     )}
                   </div>
                   {company.matchReason && (
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                       {company.matchReason}
                     </p>
                   )}
                 </div>
+                <div className="flex items-center gap-2 sm:shrink-0">
+                  <Badge variant="outline" className="gap-1">
+                    <Users className="size-3" />
+                    {persons.length}
+                  </Badge>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => findPeople(company)}
                   disabled={busyCompany === company.id}
+                  className="ml-auto sm:ml-0"
                 >
                   {busyCompany === company.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                   ) : (
-                    <Users className="h-3.5 w-3.5" />
+                    <Users className="size-3.5" />
                   )}
-                  <span className="ml-1">
+                  <span>
                     {persons.length > 0 ? "Refresh people" : "Find people"}
                   </span>
                 </Button>
+                </div>
               </div>
               {isExpanded && (
-                <div className="border-t bg-muted/30 px-3 py-2">
+                <div className="border-t bg-muted/25 px-3 py-3">
                   {persons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-1">No people yet.</p>
+                    <p className="rounded-lg border border-dashed bg-background/45 px-3 py-2 text-xs text-muted-foreground">
+                      No people yet.
+                    </p>
                   ) : (
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {persons
                         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
                         .map((person) => {
@@ -177,16 +199,16 @@ export function CompaniesSection({
                           return (
                             <li
                               key={person.id}
-                              className="flex items-center gap-2 py-1"
+                              className="flex flex-col gap-2 rounded-lg border bg-background/65 px-3 py-2 sm:flex-row sm:items-center"
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-medium truncate">
                                     {person.fullName}
                                   </span>
                                   {person.title && (
-                                    <span className="text-xs text-muted-foreground truncate">
-                                      · {person.title}
+                                    <span className="truncate text-xs text-muted-foreground">
+                                      {person.title}
                                     </span>
                                   )}
                                   {person.score != null && (
@@ -199,15 +221,15 @@ export function CompaniesSection({
                                       href={person.linkedinUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
+                                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                                     >
                                       LinkedIn
-                                      <ExternalLink className="h-3 w-3" />
+                                      <ExternalLink className="size-3" />
                                     </a>
                                   )}
                                 </div>
                                 {person.scoreReason && (
-                                  <p className="text-xs text-muted-foreground truncate">
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                                     {person.scoreReason}
                                   </p>
                                 )}
@@ -233,8 +255,8 @@ export function CompaniesSection({
                                     variant="outline"
                                     onClick={() => setEmailDrawerPerson(person)}
                                   >
-                                    <Mail className="h-3.5 w-3.5" />
-                                    <span className="ml-1">
+                                    <Mail className="size-3.5" />
+                                    <span>
                                       {email.status === "sent" ? "Sent" : "View draft"}
                                     </span>
                                   </Button>
@@ -245,13 +267,14 @@ export function CompaniesSection({
                                   variant="outline"
                                   onClick={() => draftEmail(person)}
                                   disabled={drafting === person.id}
+                                  className="sm:shrink-0"
                                 >
                                   {drafting === person.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="size-3.5 animate-spin" />
                                   ) : (
-                                    <Mail className="h-3.5 w-3.5" />
+                                    <Mail className="size-3.5" />
                                   )}
-                                  <span className="ml-1">Draft email</span>
+                                  <span>Draft email</span>
                                 </Button>
                               )}
                             </li>
