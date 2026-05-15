@@ -1,6 +1,6 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
 import type { Icp } from "@/lib/db/schema";
-import type { DiscoveredPerson } from "@/lib/apollo";
+import type { DiscoveredPerson } from "@/lib/hunter";
 import type { SseSender } from "@/lib/sse";
 
 const MAX_PEOPLE = 25;

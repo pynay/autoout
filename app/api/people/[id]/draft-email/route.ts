@@ -40,6 +40,7 @@ export async function POST(
     .insert(emails)
     .values({
       personId: person.id,
+      toAddress: person.emailAddress,
       subject: draft.subject,
       body: draft.body,
       status: "draft",

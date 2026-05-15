@@ -71,6 +71,7 @@ export const people = pgTable(
     title: text("title"),
     linkedinUrl: text("linkedin_url"),
     location: text("location"),
+    emailAddress: text("email_address"),
     score: integer("score"),
     scoreReason: text("score_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

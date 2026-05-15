@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { companies, icps, people } from "@/lib/db/schema";
-import { enrichDiscoveredPeople } from "@/lib/apollo";
+import { enrichDiscoveredPeople } from "@/lib/hunter";
 import { discoverPeopleAtCompany } from "@/lib/agents/people-discovery";
 import { filterByTitles, rankPeople } from "@/lib/agents/people-ranking";
 import { createSseStream } from "@/lib/sse";
@@ -24,12 +24,20 @@ export async function POST(
   return createSseStream(async (send) => {
     send("progress", { message: "Discovering people with Claude web search…" });
     const discovered = await discoverPeopleAtCompany(icp, company, send);
-    send("progress", { message: `Found ${discovered.length} people, enriching with Apollo…` });
+    send("progress", { message: `Found ${discovered.length} people, finding emails with Hunter…` });
     const employees = await enrichDiscoveredPeople(discovered, {
       companyName: company.name,
       companyDomain: company.domain,
     });
-    send("progress", { message: `Enriched ${employees.length} people, filtering…` });
+    const emailByPerson = new Map(
+      employees
+        .filter((employee) => employee.emailAddress)
+        .map((employee) => [
+          `${employee.fullName.toLowerCase()}|${employee.linkedinUrl ?? ""}`,
+          employee.emailAddress,
+        ]),
+    );
+    send("progress", { message: `Checked ${employees.length} people for emails, filtering…` });
 
     const filtered = filterByTitles(employees, icp.targetTitles);
     const candidates = filtered.length > 0 ? filtered : employees.slice(0, 30);
@@ -53,6 +61,7 @@ export async function POST(
           title: p.title ?? null,
           linkedinUrl: p.linkedinUrl ?? null,
           location: p.location ?? null,
+          emailAddress: emailByPerson.get(`${p.fullName.toLowerCase()}|${p.linkedinUrl ?? ""}`) ?? null,
           score: p.score,
           scoreReason: p.scoreReason,
         })),
