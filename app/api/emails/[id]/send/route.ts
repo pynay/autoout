@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { emails, people, companies, styleLessons } from "@/lib/db/schema";
+import { emails, people, companies } from "@/lib/db/schema";
 import { resend, EMAIL_FROM } from "@/lib/resend";
-import { extractLessons } from "@/lib/agents/email-learner";
+import { extractAndStoreLessons } from "@/lib/agents/email-learner";
 
 export const runtime = "nodejs";
 
@@ -79,14 +79,12 @@ async function learnFromEdits(
   const [company] = await db.select().from(companies).where(eq(companies.id, person.companyId));
   if (!company) return;
 
-  const lessons = await extractLessons(originalSubject, originalBody, editedSubject, editedBody);
-  if (lessons.length === 0) return;
-
-  await db.insert(styleLessons).values(
-    lessons.map((lesson) => ({
-      icpId: company.icpId,
-      emailId,
-      lesson,
-    })),
+  await extractAndStoreLessons(
+    company.icpId,
+    emailId,
+    originalSubject,
+    originalBody,
+    editedSubject,
+    editedBody,
   );
 }

@@ -7,6 +7,7 @@ import type { Icp, IcpDetail } from "@/lib/types";
 import { IcpSidebar } from "./icp-sidebar";
 import { IcpFormDialog } from "./icp-form-dialog";
 import { ActiveIcpPane } from "./active-icp-pane";
+import { LessonsDialog } from "./lessons-dialog";
 import { ShaderBackground } from "@/components/ui/shader-background";
 
 export function Dashboard() {
@@ -17,6 +18,7 @@ export function Dashboard() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Icp | null>(null);
+  const [lessonsOpen, setLessonsOpen] = useState(false);
 
   const fetchIcps = useCallback(async () => {
     setLoadingList(true);
@@ -102,6 +104,7 @@ export function Dashboard() {
               onEdit={() => setEditTarget(detail.icp)}
               onDelete={() => handleDelete(detail.icp.id)}
               onRefresh={() => fetchDetail(detail.icp.id)}
+              onOpenLessons={() => setLessonsOpen(true)}
             />
           ) : loadingList ? (
             <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -129,6 +132,13 @@ export function Dashboard() {
           setEditTarget(null);
         }}
         onSaved={handleSaved}
+      />
+
+      <LessonsDialog
+        open={lessonsOpen}
+        onClose={() => setLessonsOpen(false)}
+        icps={icps}
+        activeIcpId={activeId}
       />
     </div>
   );

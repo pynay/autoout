@@ -1,5 +1,5 @@
 import { anthropic, MODEL } from "@/lib/anthropic";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { styleLessons } from "@/lib/db/schema";
 import type { Icp, Company, Person } from "@/lib/db/schema";
@@ -85,14 +85,27 @@ function formatJudgmentFeedback(j: EmailJudgment): string {
   return lines.join("\n");
 }
 
-/** Fetch the most recent style lessons for an ICP (max 20 to keep prompt concise). */
+/** Fetch lessons for an ICP (ICP-specific + global), ranked by usage recency and frequency. Max 20. */
 async function fetchLessons(icpId: string): Promise<string[]> {
   const rows = await db
-    .select({ lesson: styleLessons.lesson })
+    .select({ id: styleLessons.id, lesson: styleLessons.lesson })
     .from(styleLessons)
-    .where(eq(styleLessons.icpId, icpId))
-    .orderBy(desc(styleLessons.createdAt))
+    .where(or(eq(styleLessons.icpId, icpId), isNull(styleLessons.icpId)))
+    .orderBy(
+      desc(styleLessons.lastUsedAt),
+      desc(styleLessons.usageCount),
+    )
     .limit(20);
+
+  // Bump lastUsedAt for the lessons we're about to use
+  if (rows.length > 0) {
+    const ids = rows.map((r) => r.id);
+    await db
+      .update(styleLessons)
+      .set({ lastUsedAt: new Date(), usageCount: sql`${styleLessons.usageCount} + 1` })
+      .where(sql`${styleLessons.id} = ANY(${ids})`);
+  }
+
   return rows.map((r) => r.lesson);
 }
 

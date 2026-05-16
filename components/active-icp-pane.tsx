@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
-import { Building2, Loader2, Mail, Pencil, Sparkles, Trash2, Users } from "lucide-react";
+import { BookOpen, Building2, Loader2, Mail, Pencil, Sparkles, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,14 @@ export function ActiveIcpPane({
   onEdit,
   onDelete,
   onRefresh,
+  onOpenLessons,
 }: {
   detail: IcpDetail;
   loading: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onRefresh: () => void | Promise<void>;
+  onOpenLessons: () => void;
 }) {
   const { icp, companies, people, emails } = detail;
   const [discovering, setDiscovering] = useState(false);
@@ -135,6 +137,10 @@ export function ActiveIcpPane({
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onOpenLessons}>
+              <BookOpen className="size-3.5" />
+              <span>Lessons</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={onEdit}>
               <Pencil className="size-3.5" />
               <span>Edit</span>

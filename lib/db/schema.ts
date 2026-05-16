@@ -106,13 +106,11 @@ export const styleLessons = pgTable(
   "style_lessons",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    icpId: uuid("icp_id")
-      .notNull()
-      .references(() => icps.id, { onDelete: "cascade" }),
-    emailId: uuid("email_id")
-      .notNull()
-      .references(() => emails.id, { onDelete: "cascade" }),
+    icpId: uuid("icp_id").references(() => icps.id, { onDelete: "cascade" }),
+    emailId: uuid("email_id").references(() => emails.id, { onDelete: "set null" }),
     lesson: text("lesson").notNull(),
+    usageCount: integer("usage_count").notNull().default(1),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("style_lessons_icp_idx").on(t.icpId)],
